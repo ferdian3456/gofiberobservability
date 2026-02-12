@@ -2,6 +2,16 @@
 
 Production-grade OpenTelemetry logging instrumentation for Go Fiber applications with OTLP gRPC export to Grafana Loki via OpenTelemetry Collector.
 
+## 📊 Dashboard Preview
+
+![Production Master Overview](./assets/image.png)
+_Master Overview Dashboard: Monitoring the entire stack including App, DB, and Infrastructure._
+
+|                Logs & Metrics                |                Distributed Tracing                 |
+| :------------------------------------------: | :------------------------------------------------: |
+|   ![Logs and Metrics](./assets/image1.png)   |    ![Distributed Tracing](./assets/image2.png)     |
+| _Real-time log aggregation and correlation._ | _Deep-dive tracing showing SQL query performance._ |
+
 ## 🏗️ Architecture
 
 ```
