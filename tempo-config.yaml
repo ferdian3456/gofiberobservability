@@ -1,0 +1,31 @@
+stream_over_http_enabled: true
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+ingester:
+  max_block_duration: 5m # cut the headblock when this is reached.
+  lifecycler:
+    ring:
+      replication_factor: 1
+      kvstore:
+        store: inmemory
+
+storage:
+  trace:
+    backend: local # backend configuration to use
+    wal:
+      path: /tmp/tempo/wal # where to store the the wal locally
+    local:
+      path: /tmp/tempo/blocks # where to store the blocks locally
+
+overrides:
+  metrics_generator_processors: [service-graphs, span-metrics] # enables metrics generator

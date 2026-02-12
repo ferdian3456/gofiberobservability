@@ -1,0 +1,111 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  # Host metrics receiver
+  hostmetrics:
+    root_path: /rootfs
+    collection_interval: 30s
+    scrapers:
+      cpu:
+      memory:
+      disk:
+      filesystem:
+      network:
+      load:
+      paging:
+      processes:
+
+processors:
+  # Memory limiter to prevent OOM
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  # Batch processor for efficiency
+  batch:
+    timeout: 10s
+    send_batch_size: 1000
+    send_batch_max_size: 1500
+
+  # Resource processor to add collector metadata
+  resource:
+    attributes:
+      - key: collector.name
+        value: otel-collector
+        action: insert
+      - key: collector.version
+        value: latest
+        action: insert
+
+  # Transform processor to ensure proper attribute mapping for Loki
+  transform:
+    log_statements:
+      - context: log
+        statements:
+          # Ensure service.name is available as a top-level attribute
+          - set(attributes["service_name"], resource.attributes["service.name"])
+          - set(attributes["service_version"], resource.attributes["service.version"])
+          - set(attributes["deployment_environment"], resource.attributes["deployment.environment"])
+
+exporters:
+  # Export to Loki via OTLP HTTP
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+
+  # Debug exporter
+  debug:
+    verbosity: detailed
+
+  # Prometheus exporter
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  # Export to Tempo via OTLP gRPC
+  otlp:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 0.0.0.0:1777
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+service:
+  extensions: [health_check, pprof, zpages]
+
+  pipelines:
+    # Traces pipeline
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource]
+      exporters: [otlp, debug]
+
+    # Logs pipeline
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource, transform]
+      exporters: [otlphttp/loki, debug]
+
+    # Metrics pipeline
+    metrics:
+      receivers: [otlp, hostmetrics]
+      processors: [memory_limiter, batch, resource]
+      exporters: [prometheus, debug]
+
+  telemetry:
+    logs:
+      level: info
